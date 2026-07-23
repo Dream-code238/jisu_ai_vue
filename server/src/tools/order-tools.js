@@ -15,7 +15,7 @@ export const getOrderInfoTool = tool(
     description:
       "根据订单号查询订单详情，包括订单状态、商品列表、金额、快递信息。当用户询问订单状态、订单内容时调用。",
     schema: z.object({
-      orderId: z.string().describe("订单号，格式为 ORD-xxx"),
+      orderId: z.string().describe("订单号，格式为 ORD-xxx，例如 ORD-001"),
     }),
   },
 );
@@ -33,7 +33,7 @@ export const getLogisticsTool = tool(
     description:
       "根据快递单号查询物流轨迹，包括各节点时间、地点、状态。当用户询问快递到哪了、物流状态时调用。",
     schema: z.object({
-      trackingNo: z.string().describe("快递单号"),
+      trackingNo: z.string().describe("快递单号，例如 SF1234567890"),
     }),
   },
 );
@@ -58,7 +58,7 @@ export const getUserOrdersTool = tool(
     description:
       '根据用户 ID 查询该用户的所有订单列表。当用户询问"我有哪些订单"、"最近的订单"时调用。',
     schema: z.object({
-      userId: z.string().describe("用户 ID，格式为 U-xxx"),
+      userId: z.string().describe("用户 ID，格式为 U-xxx，例如 U-100"),
     }),
   },
 );

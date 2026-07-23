@@ -11,7 +11,7 @@
           </span>
         </div>
       </div>
-      <button @click="clearMessages">清空对话</button>
+      <button class="clear-btn" @click="clearMessages" title="清空对话">清空</button>
     </header>
 
     <main class="messages-wrap" ref="messagesRef">
@@ -142,6 +142,18 @@ const formatInput = (input) => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.clear-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 13px;
+}
+.clear-btn:hover {
+  background: #f1f5f9;
 }
 .avatar {
   width: 42px;
