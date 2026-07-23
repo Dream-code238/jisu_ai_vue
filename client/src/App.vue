@@ -8,17 +8,17 @@ import HelloWorld from './components/HelloWorld.vue'
     <nav class="global-nav">
       <span class="nav-brand">极速购 AI 客服</span>
       <div class="nav-links">
-        <!-- <router-link to="/">基础对话</router-link>
+        <router-link to="/">基础对话</router-link>
         <router-link to="/agent">订单查询</router-link>
         <router-link to="/rag">知识库</router-link>
-        <router-link to="/graph">智能中枢</router-link> -->
+        <router-link to="/graph">智能中枢</router-link>
       </div>
     </nav>
     <router-view />
   </div>
 </template>
 
-<style scoped>
+<style lang="less" scoped>
 .global-nav {
   display: flex;
   align-items: center;

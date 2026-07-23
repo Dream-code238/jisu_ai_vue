@@ -129,7 +129,7 @@ const handleQuickQuestion = (q) => {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .chat-page {
   display: flex;
   flex-direction: column;
