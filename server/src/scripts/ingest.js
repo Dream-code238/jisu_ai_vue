@@ -1,13 +1,30 @@
+/**
+ * @description 文档入库脚本，执行一次即可，知识库更新时重新执行
+ * 运行：node src/scripts/ingest.js
+ */
+
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+// import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { Document } from "@langchain/core/documents";
 import { embeddings } from "../models/embedding.js";
 import { pool } from "../db/postgres.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const PG_CONFIG = {
+  pool,
+  tableName: "knowledge_embeddings",
+  columns: {
+    idColumnName: "id",
+    vectorColumnName: "embedding",
+    contentColumnName: "content",
+    metadataColumnName: "metadata",
+  },
+};
 
 // 1. 加载文档
 const loadDocs = () => {
@@ -40,19 +57,31 @@ const ingest = async () => {
   const chunks = await splitter.splitDocuments(docs);
   console.log(`文档切分完成，共 ${chunks.length} 个片段`);
 
-  const vectorStore = await PGVectorStore.fromDocuments(chunks, embeddings, {
-    pool,
-    tableName: "knowledge_embeddings",
-    columns: {
-      idColumnName: "id",
-      vectorColumnName: "embedding",
-      contentColumnName: "content",
-      metadataColumnName: "metadata",
-    },
-  });
+  // 清空旧数据（全量更新场景）
+  const client = await pool.connect();
+
+  try {
+    await client.query(
+      `CREATE TABLE IF NOT EXISTS knowledge_embeddings (
+        id       bigserial PRIMARY KEY,
+        content  text,
+        metadata jsonb,
+        embedding vector(1536)
+      );`,
+    );
+
+    await client.query("TRUNCATE knowledge_embeddings;");
+  } finally {
+    client.release();
+  }
+
+  await PGVectorStore.fromDocuments(chunks, embeddings, PG_CONFIG);
 
   console.log("文档入库完成");
   await pool.end();
 };
 
-ingest().catch(console.error);
+ingest().catch((error) => {
+  console.error("入库失败：", err.message);
+  process.exit(1);
+});

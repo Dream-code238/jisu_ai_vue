@@ -9,8 +9,7 @@ import { createModel } from "../models/deepseek.js";
 import { embeddings } from "../models/embedding.js";
 import { pool } from "../db/postgres.js";
 
-// 1. 初始化向量检索器
-const vectorStore = await PGVectorStore.initialize(embeddings, {
+const PG_CONFIG = {
   pool,
   tableName: "knowledge_embeddings",
   columns: {
@@ -19,7 +18,13 @@ const vectorStore = await PGVectorStore.initialize(embeddings, {
     contentColumnName: "content",
     metadataColumnName: "metadata",
   },
-});
+};
+
+/**
+ * @description 1. 初始化向量检索器
+ * // 初始化 VectorStore（模块加载时执行一次）
+ */
+const vectorStore = await PGVectorStore.initialize(embeddings, PG_CONFIG);
 
 // 每次检索返回最相似的 4 个片段
 const retriever = vectorStore.asRetriever({ k: 4 });
@@ -32,12 +37,12 @@ const ragPrompt = ChatPromptTemplate.fromMessages([
     "system",
     `你是极速购电商平台的专业客服助手小购。
     
-请根据以下知识库内容回答用户的问题。
-如果知识库中没有相关内容，请如实告知用户，不要编造信息。
-回答语气友好，称呼用户为"亲"，回复简洁清晰。
+    请根据以下知识库内容回答用户的问题。
+    如果知识库中没有相关内容，请如实告知用户，不要编造信息。
+    回答语气友好，称呼用户为"亲"，回复简洁清晰。
 
-知识库内容：
-{context}`,
+    知识库内容：
+    {context}`,
   ],
   ["human", "{question}"],
 ]);
@@ -49,20 +54,21 @@ const formatDocs = (docs) =>
 // 4. 组装 RAG Chain
 // RunnablePassthrough 把输入原封不动传递给下一步
 // question 字段直接传给 Prompt，同时也传给 retriever
+const model = createModel({ temperature: 0 });
 export const ragChain = RunnableSequence.from([
   {
-    context: retriever.pipe(formatDocs),
-    question: new RunnablePassthrough(),
+    context: (input) => retriever.pipe(formatDocs).invoke(input.question),
+    question: (input) => input.question,
   },
   ragPrompt,
-  createModel({ temperature: 0 }),
+  model,
   new StringOutputParser(),
 ]);
 
 // 带来源信息的版本，返回检索到的文档片段，便于前端展示引用来源
 export const ragChainWithSources = RunnableSequence.from([
   RunnablePassthrough.assign({
-    docs: retriever,
+    docs: (input) => retriever.invoke(input.question),
   }),
   {
     answer: RunnableSequence.from([
@@ -71,7 +77,7 @@ export const ragChainWithSources = RunnableSequence.from([
         question: input.question,
       }),
       ragPrompt,
-      createModel({ temperature: 0 }),
+      model,
       new StringOutputParser(),
     ]),
     sources: (input) =>
