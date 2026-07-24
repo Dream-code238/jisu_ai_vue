@@ -1,73 +1,42 @@
-import { ref, nextTick } from 'vue';
-
-const API_BASE = 'http://localhost:3000/api';
+/**
+ * useChat — 基础对话（改造版）
+ * 改造说明：使用 useSSEStream 替代内联 fetch+SSE 逻辑
+ * 后续 T07 在此基础上追加 sessionId 参数
+ */
+import { ref } from 'vue'
+import { useSSEStream } from './useSSEStream.js'
 
 export function useChat() {
-  const messages   = ref([]);
-  const streaming  = ref(false);
-  const streamText = ref('');
-  const error      = ref('');
+  const messages = ref([])
+
+  const { streaming, streamText, error, startStream, stopStream } = useSSEStream({
+    onDone: () => {
+      if (streamText.value) {
+        messages.value.push({ role: 'assistant', content: streamText.value })
+      }
+      streamText.value = ''
+    },
+  })
 
   const sendMessage = async (userInput, scrollCallback) => {
-    if (!userInput.trim() || streaming.value) return;
+    if (!userInput.trim() || streaming.value) return
 
-    messages.value.push({ role: 'user', content: userInput });
-    scrollCallback?.();
+    messages.value.push({ role: 'user', content: userInput })
+    const history = messages.value.slice(-10).map(({ role, content }) => ({ role, content }))
 
-    streaming.value  = true;
-    streamText.value = '';
-    error.value      = '';
-
-    try {
-      const history = messages.value
-        .slice(-10)
-        .map(({ role, content }) => ({ role, content }));
-
-      const response = await fetch(`${API_BASE}/chat/stream`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ message: userInput, history }),
-      });
-
-      const reader  = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const lines = decoder
-          .decode(value, { stream: true })
-          .split('\n')
-          .filter((l) => l.startsWith('data: '));
-
-        for (const line of lines) {
-          try {
-            const parsed = JSON.parse(line.slice(6));
-            if (parsed.error)   { error.value = parsed.error; break; }
-            if (parsed.done)    break;
-            if (parsed.content) {
-              streamText.value += parsed.content;
-              await nextTick();
-              scrollCallback?.();
-            }
-          } catch {}
-        }
-      }
-
-      messages.value.push({ role: 'assistant', content: streamText.value });
-    } catch (err) {
-      error.value = `请求失败：${err.message}`;
-    } finally {
-      streaming.value  = false;
-      streamText.value = '';
-    }
-  };
+    await startStream(
+      '/chat/stream',
+      { message: userInput, history },
+      {
+        onScroll: scrollCallback,
+      },
+    )
+  }
 
   const clearMessages = () => {
-    messages.value = [];
-    error.value    = '';
-  };
+    messages.value = []
+    error.value = ''
+  }
 
-  return { messages, streaming, streamText, error, sendMessage, clearMessages };
+  return { messages, streaming, streamText, error, sendMessage, clearMessages, stopStream }
 }

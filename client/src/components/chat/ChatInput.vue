@@ -10,26 +10,24 @@
       @input="autoResize"
     ></textarea>
     <button class="send-btn" :disabled="!text.trim() || disabled" @click="handleSend">发送</button>
+    <button v-if="disabled" class="stop-btn" @click="$emit('stop')">停止</button>
   </div>
 </template>
 
 <script setup>
 import { ref, nextTick } from 'vue'
 
-const props = defineProps({
-  disabled: { type: Boolean, default: false },
-})
-const emit = defineEmits(['send'])
+const props = defineProps({ disabled: { type: Boolean, default: false } })
+const emit = defineEmits(['send', 'stop'])
 
 const text = ref('')
 const textareaRef = ref(null)
 
 const handleKeydown = (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault() // 阻止换行
+    e.preventDefault()
     handleSend()
   }
-  // Shift+Enter 不阻止，允许换行
 }
 
 const handleSend = () => {
@@ -83,5 +81,14 @@ const autoResize = () => {
 .send-btn:disabled {
   background: #cbd5e1;
   cursor: not-allowed;
+}
+.stop-btn {
+  padding: 0 16px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
 }
 </style>

@@ -1,95 +1,49 @@
-import { ref, nextTick } from 'vue'
-
-const API_BASE = 'http://localhost:3000/api'
+/**
+ * useAgent — Agent 订单查询（改造版）
+ * 改造说明：使用 useSSEStream 替代内联 fetch+SSE 逻辑
+ * 保留原有 step 事件处理
+ */
+import { ref } from 'vue'
+import { useSSEStream } from './useSSEStream.js'
 
 export function useAgent() {
   const messages = ref([])
-  const loading = ref(false)
-  const steps = ref([]) // 当前轮次的中间步骤
-  const error = ref('')
+  const steps = ref([])
+
+  const { streaming, streamText, error, startStream, stopStream } = useSSEStream({
+    onStep: (stepData) => {
+      steps.value.push(stepData)
+    },
+    onDone: () => {
+      if (streamText.value) {
+        messages.value.push({
+          role: 'assistant',
+          content: streamText.value,
+          meta: { mode: 'Agent', steps: [...steps.value] },
+        })
+      }
+      streamText.value = ''
+    },
+  })
 
   const sendMessage = async (userInput, scrollCallback) => {
-    if (!userInput.trim() || loading.value) return
+    if (!userInput.trim() || streaming.value) return
 
-    error.value = ''
-    steps.value = []
     messages.value.push({ role: 'user', content: userInput })
-    scrollCallback?.()
+    steps.value = []
 
-    loading.value = true
+    const history = messages.value
+      .filter((m) => m.content)
+      .slice(-10)
+      .map(({ role, content }) => ({ role, content }))
 
-    // 占位，流式过程中更新
-    const assistantIndex = messages.value.length
-    messages.value.push({ role: 'assistant', content: '', thinking: true })
-
-    try {
-      const history = messages.value
-        .slice(0, -1)
-        .slice(-10)
-        .filter((m) => !m.thinking)
-        .map(({ role, content }) => ({ role, content }))
-
-      const response = await fetch(`${API_BASE}/agent/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userInput, history }),
-      })
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder('utf-8')
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const lines = decoder
-          .decode(value, { stream: true })
-          .split('\n')
-          .filter((l) => l.startsWith('data: '))
-
-        for (const line of lines) {
-          try {
-            const parsed = JSON.parse(line.slice(6))
-
-            if (parsed.type === 'step') {
-              steps.value.push({
-                tool: parsed.tool,
-                toolInput: parsed.toolInput,
-                observation: parsed.observation,
-              })
-              await nextTick()
-              scrollCallback?.()
-            }
-
-            if (parsed.type === 'answer') {
-              messages.value[assistantIndex] = {
-                role: 'assistant',
-                content: parsed.content,
-                steps: [...steps.value],
-              }
-              await nextTick()
-              scrollCallback?.()
-            }
-
-            if (parsed.type === 'done') {
-              steps.value = []
-            }
-
-            if (parsed.type === 'error') {
-              messages.value[assistantIndex] = {
-                role: 'assistant',
-                content: parsed.content,
-              }
-            }
-          } catch {}
-        }
-      }
-    } catch (err) {
-      error.value = `请求失败：${err.message}`
-      messages.value.pop()
-    } finally {
-      loading.value = false
-    }
+    await startStream(
+      '/agent/stream',
+      { message: userInput, history },
+      {
+        onScroll: scrollCallback,
+      },
+    )
   }
 
   const clearMessages = () => {
@@ -98,5 +52,5 @@ export function useAgent() {
     error.value = ''
   }
 
-  return { messages, loading, steps, error, sendMessage, clearMessages }
+  return { messages, streaming, streamText, steps, error, sendMessage, clearMessages, stopStream }
 }

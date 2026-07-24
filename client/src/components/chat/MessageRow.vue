@@ -18,6 +18,7 @@
 import UserBubble from './UserBubble.vue'
 import AIBubble from './AIBubble.vue'
 import MessageMeta from './MessageMeta.vue'
+
 defineProps({
   message: { type: Object, required: true },
   streaming: { type: Boolean, default: false },

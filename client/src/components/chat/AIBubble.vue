@@ -7,6 +7,7 @@
 
 <script setup>
 import StreamingCursor from './StreamingCursor.vue'
+
 defineProps({
   content: { type: String, default: '' },
   streaming: { type: Boolean, default: false },
