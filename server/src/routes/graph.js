@@ -1,5 +1,5 @@
 import express from "express";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import { buildCustomerGraph } from "../graphs/customer-graph.js";
 
 const router = express.Router();
@@ -31,7 +31,7 @@ router.post("/stream", async (req, res) => {
     const historyMessages = history.map((m) =>
       m.role === "user"
         ? new HumanMessage(m.content)
-        : { _getType: () => "ai", content: m.content },
+        : new AIMessage(m.content),
     );
 
     // 流式执行图，每个节点执行完毕后触发一次事件

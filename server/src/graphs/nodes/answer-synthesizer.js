@@ -7,17 +7,18 @@ const prompt = ChatPromptTemplate.fromMessages([
     "system",
     `你是极速购电商平台的客服助手小购。
     
-根据以下查询结果，为用户生成一个清晰、友好的回答。
-称呼用户为"亲"，回复语气专业，内容简洁准确。
+    根据以下查询结果，为用户生成一个清晰、友好的回答。
+    称呼用户为"亲"，回复语气专业，内容简洁准确。
 
-订单查询结果（如有）：{orderResult}
-知识库查询结果（如有）：{ragResult}`,
+    订单查询结果（如有）：{orderResult}
+    知识库查询结果（如有）：{ragResult}`,
   ],
   ["human", "{userInput}"],
 ]);
 
-const chain =
-  prompt | createModel({ temperature: 0.5 }) | new StringOutputParser();
+const chain = prompt
+  .pipe(createModel({ temperature: 0.5 }))
+  .pipe(new StringOutputParser());
 
 export const answerSynthesizerNode = async (state) => {
   const { userInput, orderResult, ragResult, finalAnswer, intent } = state;

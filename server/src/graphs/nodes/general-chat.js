@@ -11,8 +11,9 @@ const prompt = ChatPromptTemplate.fromMessages([
   ["human", "{userInput}"],
 ]);
 
-const chain =
-  prompt | createModel({ temperature: 0.7 }) | new StringOutputParser();
+const chain = prompt
+  .pipe(createModel({ temperature: 0.7 }))
+  .pipe(new StringOutputParser());
 
 export const generalChatNode = async (state) => {
   const { userInput, messages } = state;

@@ -3,7 +3,7 @@ import { ragChain } from "../../chains/rag-chain.js";
 export const ragNode = async (state) => {
   const { userInput } = state;
   try {
-    const result = await ragChain.invoke(userInput);
+    const result = await ragChain.invoke({ question: userInput });
     return { ragResult: result };
   } catch (err) {
     console.error("[ragNode]", err.message);

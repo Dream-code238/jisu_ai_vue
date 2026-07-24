@@ -164,6 +164,7 @@ const handleQuick = (q) => {
   flex-direction: column;
   gap: 16px;
   min-width: 780px;
+  max-height: 740px;
 }
 .welcome {
   text-align: center;

@@ -2,15 +2,15 @@ import { ref, nextTick } from 'vue'
 
 const API_BASE = 'http://localhost:3000/api'
 
-const NODE_LABELS = {
-  intentRouter: '意图识别中',
-  orderAgent: '查询订单信息',
-  ragNode: '检索知识库',
-  generalChat: '思考回答',
+export const NODE_LABELS = {
+  intentRouter: '意图识别',
+  orderAgent: '订单查询',
+  ragNode: '知识库检索',
+  generalChat: '通用对话',
   answerSynthesizer: '整理回答',
 }
 
-const INTENT_LABELS = {
+export const INTENT_LABELS = {
   order: '订单查询',
   knowledge: '知识库问答',
   general: '通用对话',
@@ -36,7 +36,7 @@ export function useGraph() {
     messages.value.push({
       role: 'assistant',
       content: '',
-      nodes: [], // 经过的节点列表
+      nodes: [],
       intent: '',
       steps: [],
       loading: true,
@@ -131,12 +131,5 @@ export function useGraph() {
     error.value = ''
   }
 
-  return {
-    messages,
-    loading,
-    currentNode,
-    error,
-    sendMessage,
-    clearMessages,
-  }
+  return { messages, loading, currentNode, error, sendMessage, clearMessages }
 }
