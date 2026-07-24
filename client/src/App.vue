@@ -1,69 +1,37 @@
-<script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
   <div id="app_root_container">
-    <nav class="global-nav">
-      <span class="nav-brand">极速购 AI 客服</span>
-      <div class="nav-links">
-        <router-link to="/">基础对话</router-link>
-        <router-link to="/agent">订单查询</router-link>
-        <router-link to="/rag">知识库</router-link>
-        <router-link to="/graph">智能中枢</router-link>
-      </div>
-    </nav>
-    <router-view />
+    <TheSidebar />
+    <div class="main">
+      <TheHeader />
+      <main class="content-area">
+        <router-view />
+      </main>
+    </div>
   </div>
 </template>
 
-<style lang="less" scoped>
-.global-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 48px;
-  background: #1e293b;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.nav-brand {
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-}
-.nav-links {
-  display: flex;
-  gap: 4px;
-}
-.nav-links a {
-  color: #94a3b8;
-  text-decoration: none;
-  font-size: 13px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  transition: all 0.15s;
-}
-.nav-links a:hover {
-  color: #fff;
-  background: #334155;
-}
-.nav-links a.router-link-active {
-  color: #fff;
-  background: #2563eb;
-}
+<script setup>
+import { RouterLink, RouterView } from 'vue-router'
+import TheSidebar from './components/layout/TheSidebar.vue'
+import TheHeader from './components/layout/TheHeader.vue'
+</script>
 
-#app {
+<style lang="less" scoped>
+#app_root_container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+}
+.main {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-}
-#app > .router-view,
-#app > div:not(.global-nav) {
-  flex: 1;
   overflow: hidden;
+}
+.content-area {
+  flex: 1;
+  overflow-y: auto;
 }
 </style>
