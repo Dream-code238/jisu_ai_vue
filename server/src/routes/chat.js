@@ -1,8 +1,7 @@
 /**
- * 第一章：Express 路由
- * GET  /api/chat/health  - 健康检查
- * POST /api/chat         - 普通对话（一次性返回）
- * POST /api/chat/stream  - 流式对话（SSE）
+ * routes/chat.js（改造版）
+ * 改造点：流式接口在发送/接收消息时写入 messages 表
+ * 原有 health 和 POST / 端点保持不变
  */
 
 import express from "express";
@@ -11,6 +10,7 @@ import {
   customerServiceStreamChain,
   formatHistory,
 } from "../chains/basic-chat.js";
+import { messageDB } from "../db/postgres.js";
 
 const router = express.Router();
 
@@ -19,25 +19,25 @@ const router = express.Router();
  */
 
 router.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    service: "chat",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 /**
  * @description 普通对话接口
  */
 router.post("/", async (req, res) => {
-  const { message, history = [] } = req.body;
-  if (!message || typeof message !== "string") {
-    return res.status(400).json({ error: "message 字段不能为空" });
-  }
-
   try {
+    const { message, history = [] } = req.body;
+    if (!message) return res.status(400).json({ error: "message 不能为空" });
     const response = await customerServiceChain.invoke({
-      user_input: message,
-      chat_history: formatHistory(history),
-      current_time: new Date().toLocaleString("zh-CN"),
+      message,
+      history: formatHistory(history),
     });
-    res.json({ content: response });
+    res.json({ reply: response });
   } catch (error) {
     console.error("[Chat Error]", error.message);
     res.status(500).json({ error: "服务暂时不可用，请稍后重试" });
@@ -48,10 +48,12 @@ router.post("/", async (req, res) => {
  * @description 流式对话接口（SSE）
  */
 router.post("/stream", async (req, res) => {
-  const { message, history = [] } = req.body;
+  const { message, history = [], sessionId } = req.body;
+  if (!message) return res.status(400).json({ error: "message 不能为空" });
 
-  if (!message || typeof message !== "string") {
-    return res.status(400).json({ error: "message 字段不能为空" });
+  // 用户消息入库
+  if (sessionId) {
+    await messageDB.add(sessionId, "user", message);
   }
 
   // 设置 SSE 响应头
@@ -62,24 +64,30 @@ router.post("/stream", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
 
   // 发送 SSE 数据的工具函数
-  const sendData = (data) => {
-    return res.write(`data: ${JSON.stringify(data)}\n\n`);
-  };
+  const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
   try {
     const stream = await customerServiceStreamChain.stream({
-      user_input: message,
-      chat_history: formatHistory(history),
-      current_time: new Date().toLocaleString("zh-CN"),
+      message,
+      history: formatHistory(history),
     });
 
     // 逐块发送给前端
+    let fullResponse = "";
     for await (const chunk of stream) {
-      if (chunk) sendData({ content: chunk });
+      if (chunk) {
+        fullResponse += chunk;
+        send({ content: chunk });
+      }
+    }
+
+    // AI 回复入库
+    if (sessionId && fullResponse) {
+      await messageDB.add(sessionId, "assistant", fullResponse);
     }
 
     // 发送结束标记
-    sendData({ done: true });
+    send({ done: true });
     res.end();
   } catch (error) {
     console.error("[Stream Error]", error.message);
