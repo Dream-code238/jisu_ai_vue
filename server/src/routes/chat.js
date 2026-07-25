@@ -91,7 +91,7 @@ router.post("/stream", async (req, res) => {
     res.end();
   } catch (error) {
     console.error("[Stream Error]", error.message);
-    sendData({ error: "生成回复时出错，请重试" });
+    send({ error: "生成回复时出错，请重试" });
     res.end();
   }
 });

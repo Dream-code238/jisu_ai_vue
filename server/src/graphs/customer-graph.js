@@ -13,10 +13,10 @@ import { ragNode } from "./nodes/rag-node.js";
 import { generalChatNode } from "./nodes/general-chat.js";
 import { answerSynthesizerNode } from "./nodes/answer-synthesizer.js";
 
-export const buildCustomerGraph = () => {
+export const buildCustomerGraph = async () => {
   // 创建 PostgresSaver checkpointer
   const checkpointer = await PostgresSaver.fromConnString(
-    `postgresql://${process.env.PG_USER}:${process.env.PG_PASSWORD}@${process.env.PG_HOST}:${process.env.PG_PORT}/${process.env.PG_DATABASE}`
+    `postgresql://${process.env.PG_USER}:${process.env.PG_PASSWORD}@${process.env.PG_HOST}:${process.env.PG_PORT}/${process.env.PG_DATABASE}`,
   );
 
   // 自动创建 checkpoint 表
@@ -24,20 +24,20 @@ export const buildCustomerGraph = () => {
 
   const graph = new StateGraph(GraphState)
     // 注册节点
-    .addNode('intentRouter', intentRouterNode)
-    .addNode('orderAgent', orderAgentNode)
-    .addNode('ragNode', ragNode)
-    .addNode('generalChat', generalChatNode)
-    .addNode('answerSynthesizer', answerSynthesizerNode)
+    .addNode("intentRouter", intentRouterNode)
+    .addNode("orderAgent", orderAgentNode)
+    .addNode("ragNode", ragNode)
+    .addNode("generalChat", generalChatNode)
+    .addNode("answerSynthesizer", answerSynthesizerNode)
 
     // 入口：START → 意图识别
     .addEdge(START, "intentRouter")
 
     // 条件路由：意图识别完成后，根据 intent 分流
-    .addConditionalEdges('intentRouter', routeByIntent, {
-      order: 'orderAgent',
-      knowledge: 'ragNode',
-      general: 'generalChat',
+    .addConditionalEdges("intentRouter", routeByIntent, {
+      order: "orderAgent",
+      knowledge: "ragNode",
+      general: "generalChat",
     })
 
     // 三条路径都汇入答案综合节点
