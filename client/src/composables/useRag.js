@@ -1,7 +1,8 @@
 /**
- * useRag — 知识库问答（改造版）
- * 改造说明：使用 useSSEStream 替代内联 fetch+SSE 逻辑
- * 保留 sources 事件处理，T10 将改为双阶段流式（/rag/stream）
+ * useRag — 知识库问答（T10 双阶段流式版）
+ * 改造点：从 /rag/query 切换到 /rag/stream
+ * sources 事件先到 → 立即展示来源卡片
+ * chunk 事件逐字到达 → 流式显示回答
  */
 import { ref } from 'vue'
 import { useSSEStream } from './useSSEStream.js'
@@ -9,10 +10,12 @@ import { useSSEStream } from './useSSEStream.js'
 export function useRag() {
   const messages = ref([])
   const sources = ref([])
+  const ragStats = ref({ recallCount: 0, topK: 4, latency: 0 })
 
   const { streaming, streamText, error, startStream, stopStream } = useSSEStream({
     onSources: (sourceList) => {
       sources.value = sourceList
+      ragStats.value.recallCount = sourceList.length
     },
     onDone: () => {
       if (streamText.value) {
@@ -33,14 +36,8 @@ export function useRag() {
     messages.value.push({ role: 'user', content: question })
     sources.value = []
 
-    // T10 将改为 /rag/stream（双阶段流式）
-    await startStream(
-      '/rag/query',
-      { question },
-      {
-        onScroll: scrollCallback,
-      },
-    )
+    // 使用双阶段流式端点
+    await startStream('/rag/stream', { question }, { onScroll: scrollCallback })
   }
 
   const clearMessages = () => {
@@ -49,5 +46,15 @@ export function useRag() {
     error.value = ''
   }
 
-  return { messages, sources, streaming, streamText, error, askQuestion, clearMessages, stopStream }
+  return {
+    messages,
+    sources,
+    streaming,
+    streamText,
+    error,
+    ragStats,
+    askQuestion,
+    clearMessages,
+    stopStream,
+  }
 }

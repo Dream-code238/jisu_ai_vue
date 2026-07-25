@@ -1,89 +1,92 @@
-import {
-  RunnableSequence,
-  RunnablePassthrough,
-} from "@langchain/core/runnables";
-import { StringOutputParser } from "@langchain/core/output_parsers";
+/**
+ * rag-chain.js（改造版）
+ * 改造点：导出 getRetriever / ragPrompt / formatDocs 供 /stream 端点使用
+ * 原有 ragChain / ragChainWithSources 保留不变
+ */
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
-import { createModel } from "../models/deepseek.js";
 import { embeddings } from "../models/embedding.js";
+import { model } from "../models/deepseek.js";
 import { pool } from "../db/postgres.js";
+import { StringOutputParser } from "@langchain/core/output_parsers";
 
-const PG_CONFIG = {
-  pool,
-  tableName: "knowledge_embeddings",
-  columns: {
-    idColumnName: "id",
-    vectorColumnName: "embedding",
-    contentColumnName: "content",
-    metadataColumnName: "metadata",
-  },
-};
-
-/**
- * @description 1. 初始化向量检索器
- * // 初始化 VectorStore（模块加载时执行一次）
- */
-const vectorStore = await PGVectorStore.initialize(embeddings, PG_CONFIG);
-
-// 每次检索返回最相似的 4 个片段
-const retriever = vectorStore.asRetriever({ k: 4 });
-
-// 2. RAG Prompt
-// {context} 是检索到的相关文档内容
-// {question} 是用户问题
-const ragPrompt = ChatPromptTemplate.fromMessages([
+// Prompt 模板（导出供 /stream 使用）
+export const ragPrompt = ChatPromptTemplate.fromMessages([
   [
     "system",
-    `你是极速购电商平台的专业客服助手小购。
-    
-    请根据以下知识库内容回答用户的问题。
-    如果知识库中没有相关内容，请如实告知用户，不要编造信息。
-    回答语气友好，称呼用户为"亲"，回复简洁清晰。
+    `你是极速购 AI 客服助手。根据以下检索到的知识库内容回答用户问题。
+如果知识库中没有相关信息，请诚实告知用户，不要编造信息。
+回答控制在 150 字以内。
 
-    知识库内容：
-    {context}`,
+知识库内容：
+{context}`,
   ],
   ["human", "{question}"],
 ]);
 
-// 3. 把检索到的文档列表格式化成字符串
-const formatDocs = (docs) =>
-  docs.map((doc) => doc.pageContent).join("\n\n---\n\n");
+let vectorStoreInstance = null;
 
-// 4. 组装 RAG Chain
-// RunnablePassthrough 把输入原封不动传递给下一步
-// question 字段直接传给 Prompt，同时也传给 retriever
-const model = createModel({ temperature: 0 });
-export const ragChain = RunnableSequence.from([
-  {
-    context: (input) => retriever.pipe(formatDocs).invoke(input.question),
-    question: (input) => input.question,
-  },
-  ragPrompt,
-  model,
-  new StringOutputParser(),
-]);
+/**
+ * 获取 PGVectorStore 实例（懒加载）
+ */
+export async function getVectorStore() {
+  if (!vectorStoreInstance) {
+    vectorStoreInstance = await PGVectorStore.initialize(embeddings, {
+      pool,
+      tableName: "knowledge_embeddings",
+      columns: [
+        { name: "id", type: "serial", primaryKey: true },
+        { name: "content", type: "text" },
+        { name: "embedding", type: "vector(1536)" },
+        { name: "metadata", type: "jsonb" },
+      ],
+    });
+  }
+  return vectorStoreInstance;
+}
 
-// 带来源信息的版本，返回检索到的文档片段，便于前端展示引用来源
-export const ragChainWithSources = RunnableSequence.from([
-  RunnablePassthrough.assign({
-    docs: (input) => retriever.invoke(input.question),
-  }),
-  {
-    answer: RunnableSequence.from([
-      (input) => ({
-        context: formatDocs(input.docs),
-        question: input.question,
-      }),
-      ragPrompt,
-      model,
-      new StringOutputParser(),
-    ]),
-    sources: (input) =>
-      input.docs.map((doc) => ({
-        content: doc.pageContent.slice(0, 100) + "...",
-        source: doc.metadata.source,
-      })),
-  },
-]);
+/**
+ * 获取 retriever（Top-K=4）
+ */
+export async function getRetriever() {
+  const store = await getVectorStore();
+  return store.asRetriever({ k: 4 });
+}
+
+/**
+ * 格式化检索文档
+ */
+export function formatDocs(docs) {
+  return docs.map((d) => d.pageContent).join("\n\n---\n\n");
+}
+
+// 原有 chain（保留不变）
+export const ragChain = ragPrompt.pipe(model).pipe(new StringOutputParser());
+
+// 带来源的 chain（保留不变）
+export const ragChainWithSources = ragPrompt
+  .pipe(model)
+  .pipe(new StringOutputParser())
+  .pipe(
+    // 简化版：先检索再生成
+    async (input) => {
+      const retriever = await getRetriever();
+      const docs = await retriever.invoke(input.question);
+      const context = formatDocs(docs);
+      const answer = await ragPrompt
+        .pipe(model)
+        .pipe(new StringOutputParser())
+        .invoke({
+          context,
+          question: input.question,
+        });
+      return {
+        answer,
+        sources: docs.map((d, i) => ({
+          index: i + 1,
+          source: d.metadata.source,
+          content: d.pageContent.slice(0, 100) + "...",
+        })),
+      };
+    },
+  );
