@@ -1,0 +1,29 @@
+# docker-compose.yml
+# 极速购 AI 客服系统 — PostgreSQL + pgvector 数据库
+# 启动: docker compose up -d
+# 停止: docker compose down
+# 重建: docker compose down -v && docker compose up -d
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: pgvector-jisu
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: jisu_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - jisu_pgdata:/var/lib/postgresql/data
+      # 首次启动时自动执行迁移脚本（可选）
+      # - ./server/src/db/migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jisu_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  jisu_pgdata:
