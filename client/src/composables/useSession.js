@@ -14,12 +14,19 @@ export function useSession() {
     try {
       const res = await fetch(`${API_BASE}/session/list`)
       const data = await res.json()
-      sessions.value = data.map((s) => ({
-        id: s.session_id,
-        title: s.title,
-        color: 'blue',
-        time: formatTime(s.created_at),
-      }))
+
+      if (!Array.isArray(data)) {
+        throw new Error('会话列表接口返回格式不正确')
+      }
+
+      sessions.value = Array.isArray(data)
+        ? data.map((s) => ({
+            id: s.session_id,
+            title: s.title,
+            color: 'blue',
+            time: formatTime(s.created_at),
+          }))
+        : []
       if (sessions.value.length > 0) {
         await selectSession(sessions.value[0].id)
       }

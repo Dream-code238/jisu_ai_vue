@@ -1,38 +1,35 @@
 import { createModel } from "../../models/deepseek.js";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { StringOutputParser } from "@langchain/core/output_parsers";
 
-const prompt = ChatPromptTemplate.fromMessages([
-  [
-    "system",
-    `你是极速购电商平台的客服助手小购。
-    
-    根据以下查询结果，为用户生成一个清晰、友好的回答。
-    称呼用户为"亲"，回复语气专业，内容简洁准确。
+const model = createModel({ temperature: 0.3 });
 
-    订单查询结果（如有）：{orderResult}
-    知识库查询结果（如有）：{ragResult}`,
-  ],
-  ["human", "{userInput}"],
-]);
+/**
+ * 答案综合节点（改造：支持合并多个分支结果）
+ */
+export async function answerSynthesizerNode(state) {
+  const {
+    intents = [],
+    orderResult,
+    ragResult,
+    finalAnswer,
+    parallelResults = [],
+  } = state;
 
-const chain = prompt
-  .pipe(createModel({ temperature: 0.5 }))
-  .pipe(new StringOutputParser());
-
-export const answerSynthesizerNode = async (state) => {
-  const { userInput, orderResult, ragResult, finalAnswer, intent } = state;
-
-  // general 意图已经在 generalChatNode 生成了 finalAnswer，直接透传
-  if (intent === "general" && finalAnswer) {
-    return { finalAnswer };
+  // 单意图：直接返回
+  if (intents.length <= 1) {
+    if (finalAnswer) return { finalAnswer };
+    if (orderResult?.answer) return { finalAnswer: orderResult.answer };
+    if (ragResult) return { finalAnswer: ragResult };
+    return { finalAnswer: "抱歉，我无法理解您的问题。" };
   }
 
-  const result = await chain.invoke({
-    userInput,
-    orderResult: orderResult ? JSON.stringify(orderResult.answer) : "无",
-    ragResult: ragResult || "无",
-  });
+  // 多意图：合并多个结果
+  const parts = [];
+  if (orderResult?.answer) parts.push(`【订单查询】${orderResult.answer}`);
+  if (ragResult) parts.push(`【知识库】${ragResult}`);
 
-  return { finalAnswer: result };
-};
+  const mergePrompt = `用户问了多个问题，请将以下回答合并为一段连贯的回复（150字以内）：
+${parts.join("\n\n")}`;
+
+  const merged = await model.invoke(mergePrompt);
+  return { finalAnswer: merged.content };
+}
