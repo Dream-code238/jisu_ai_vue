@@ -11,6 +11,7 @@ import {
   formatHistory,
 } from "../chains/basic-chat.js";
 import { messageDB } from "../db/postgres.js";
+import { queryCache, writeCache } from "../cache/semantic-cache.js";
 
 const router = express.Router();
 
@@ -51,20 +52,35 @@ router.post("/stream", async (req, res) => {
   const { message, history = [], sessionId } = req.body;
   if (!message) return res.status(400).json({ error: "message 不能为空" });
 
-  // 用户消息入库
-  if (sessionId) {
-    await messageDB.add(sessionId, "user", message);
-  }
-
-  // 设置 SSE 响应头
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  // 禁用 Nginx 缓冲
   res.setHeader("X-Accel-Buffering", "no");
 
-  // 发送 SSE 数据的工具函数
   const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  // ① 缓存检查
+  const cached = await queryCache(message);
+  if (cached.hit) {
+    send({ type: "cache_hit", cached: true });
+    // 逐字发送缓存答案（模拟流式）
+    const words = cached.answer.split("");
+    for (const word of words) {
+      send({ content: word });
+      await new Promise((r) => setTimeout(r, 10)); // 10ms 间隔
+    }
+    if (sessionId) {
+      await messageDB.add(sessionId, "user", message);
+      await messageDB.add(sessionId, "assistant", cached.answer);
+    }
+    send({ done: true });
+    return res.end();
+  }
+
+  // ② 未命中，正常流式生成
+  if (sessionId) {
+    await messageDB.add(sessionId, "user", message);
+  }
 
   try {
     const stream = await customerServiceStreamChain.stream({
@@ -72,7 +88,6 @@ router.post("/stream", async (req, res) => {
       history: formatHistory(history),
     });
 
-    // 逐块发送给前端
     let fullResponse = "";
     for await (const chunk of stream) {
       if (chunk) {
@@ -81,17 +96,18 @@ router.post("/stream", async (req, res) => {
       }
     }
 
-    // AI 回复入库
-    if (sessionId && fullResponse) {
-      await messageDB.add(sessionId, "assistant", fullResponse);
+    // ③ 写入缓存
+    if (fullResponse) {
+      await writeCache(message, fullResponse);
+      if (sessionId) {
+        await messageDB.add(sessionId, "assistant", fullResponse);
+      }
     }
 
-    // 发送结束标记
     send({ done: true });
     res.end();
-  } catch (error) {
-    console.error("[Stream Error]", error.message);
-    send({ error: "生成回复时出错，请重试" });
+  } catch (err) {
+    send({ error: "回复失败，请重试" });
     res.end();
   }
 });

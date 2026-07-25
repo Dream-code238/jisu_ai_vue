@@ -14,17 +14,27 @@ const API_BASE = 'http://localhost:3000/api'
 export function useChat(sessionIdRef) {
   const messages = ref([])
   const historyLoaded = ref(false)
+  const cacheHit = ref(false)
 
   const { streaming, streamText, error, startStream, stopStream } = useSSEStream({
+    onCacheHit: (data) => {
+      // 可在此设置 meta.cached = true
+      cacheHit.value = true
+    },
     onDone: () => {
       if (streamText.value) {
-        messages.value.push({ role: 'assistant', content: streamText.value })
+        messages.value.push({
+          role: 'assistant',
+          content: streamText.value,
+          meta: {
+            mode: 'chat',
+            cached: cacheHit.value,
+            time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+          },
+        })
       }
       streamText.value = ''
-      // 首条消息后更新会话标题
-      if (sessionIdRef?.value && messages.value.length === 1) {
-        updateSessionTitle(sessionIdRef.value, messages.value[0].content.slice(0, 30))
-      }
+      cacheHit.value = false
     },
   })
 
