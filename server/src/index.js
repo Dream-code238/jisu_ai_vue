@@ -7,6 +7,7 @@ import agentRouter from "./routes/agent.js";
 import ragRouter from "./routes/rag.js";
 import graphRouter from "./routes/graph.js";
 import historyRouter from "./routes/history.js";
+import knowledgeRouter from "./routes/knowledge.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ app.use("/api/chat", historyRouter);
 app.use("/api/agent", agentRouter);
 app.use("/api/rag", ragRouter);
 app.use("/api/graph", graphRouter);
+app.use("/api/knowledge", knowledgeRouter);
 
 app.get("/", (req, res) => {
   res.json({
