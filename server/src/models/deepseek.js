@@ -1,9 +1,8 @@
 /**
- * 第一章：模型封装
+ * 模型封装
  * 将 DeepSeek 封装为 LangChain ChatModel
  * DeepSeek 兼容 OpenAI 协议，使用 ChatOpenAI 并替换 baseURL 即可
  */
-
 import { ChatOpenAI } from "@langchain/openai";
 import "dotenv/config";
 
@@ -13,8 +12,7 @@ import "dotenv/config";
  */
 export const createModel = (options = {}) => {
   return new ChatOpenAI({
-    model: process.env.MODEL_NAME || "deepseek-chat",
-    // openAIApiKey: process.env.DEEPSEEK_API_KEY,
+    model: process.env.MODEL_NAME || "deepseek-v4-flash",
     apiKey: process.env.DEEPSEEK_API_KEY,
     configuration: {
       baseURL: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1",

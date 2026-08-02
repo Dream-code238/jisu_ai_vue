@@ -8,8 +8,8 @@ const agentApp = createReactAgent({
   llm: model,
   tools: allTools,
   prompt: `你是极速购的订单查询助手。
-  根据用户的问题，调用相应工具查询订单或物流信息。
-  只查询数据，不需要生成最终的客服回答。`,
+根据用户的问题，调用相应工具查询订单或物流信息。
+只查询数据，不需要生成最终的客服回答。`,
 });
 
 export const orderAgentNode = async (state) => {

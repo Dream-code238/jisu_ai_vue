@@ -17,8 +17,6 @@ const chain = prompt
 
 export const generalChatNode = async (state) => {
   const { userInput, messages } = state;
-
-  // 从 messages 里取历史（过滤掉系统消息）
   const chatHistory = (messages || [])
     .slice(-8)
     .map((m) => [m._getType?.() === "human" ? "human" : "assistant", m.content])

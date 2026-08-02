@@ -11,7 +11,7 @@ export const pool = new Pool({
   database: process.env.PG_DATABASE || "langchain_course",
 });
 
-// ─── 会话 CRUD ───
+// ─── 会话 CRUD ──────────────────────────────────────────────────
 export const conversationDB = {
   async create(sessionId, title = "新对话", userId = "anonymous") {
     const { rows } = await pool.query(
@@ -20,6 +20,7 @@ export const conversationDB = {
     );
     return rows[0];
   },
+
   async list(userId = "anonymous") {
     const { rows } = await pool.query(
       "SELECT * FROM conversations WHERE user_id = $1 ORDER BY created_at DESC",
@@ -27,6 +28,7 @@ export const conversationDB = {
     );
     return rows;
   },
+
   async getBySession(sessionId) {
     const { rows } = await pool.query(
       "SELECT * FROM conversations WHERE session_id = $1",
@@ -34,12 +36,14 @@ export const conversationDB = {
     );
     return rows[0];
   },
+
   async updateTitle(sessionId, title) {
     await pool.query(
       "UPDATE conversations SET title = $1 WHERE session_id = $2",
       [title, sessionId],
     );
   },
+
   async delete(sessionId) {
     await pool.query("DELETE FROM conversations WHERE session_id = $1", [
       sessionId,
@@ -47,7 +51,7 @@ export const conversationDB = {
   },
 };
 
-// ─── 消息 CRUD ───
+// ─── 消息 CRUD ──────────────────────────────────────────────────
 export const messageDB = {
   async add(sessionId, role, content, metadata = {}, tokenCount = 0) {
     const { rows } = await pool.query(
@@ -56,6 +60,7 @@ export const messageDB = {
     );
     return rows[0];
   },
+
   async getBySession(sessionId, limit = 50) {
     const { rows } = await pool.query(
       "SELECT * FROM messages WHERE session_id = $1 ORDER BY created_at ASC LIMIT $2",
@@ -63,6 +68,7 @@ export const messageDB = {
     );
     return rows;
   },
+
   async countBySession(sessionId) {
     const { rows } = await pool.query(
       "SELECT COUNT(*) as count FROM messages WHERE session_id = $1",
@@ -72,7 +78,7 @@ export const messageDB = {
   },
 };
 
-// ─── 成本记录 ───
+// ─── 成本记录 ────────────────────────────────────────────────────
 export const costDB = {
   async add(sessionId, node, model, inputTokens, outputTokens, cost) {
     await pool.query(
@@ -80,6 +86,7 @@ export const costDB = {
       [sessionId, node, model, inputTokens, outputTokens, cost],
     );
   },
+
   async getStats(days = 7) {
     const { rows } = await pool.query(
       `SELECT model, SUM(input_tokens) as input_sum, SUM(output_tokens) as output_sum,
@@ -91,7 +98,7 @@ export const costDB = {
   },
 };
 
-// ─── 知识库文档 ───
+// ─── 知识库文档 ──────────────────────────────────────────────────
 export const kbDocumentDB = {
   async add(filename, fileType, chunkCount = 0, status = "processing") {
     const { rows } = await pool.query(
@@ -100,12 +107,14 @@ export const kbDocumentDB = {
     );
     return rows[0];
   },
+
   async list() {
     const { rows } = await pool.query(
       "SELECT * FROM kb_documents ORDER BY uploaded_at DESC",
     );
     return rows;
   },
+
   async updateStatus(id, status, chunkCount = null) {
     if (chunkCount !== null) {
       await pool.query(
@@ -119,18 +128,20 @@ export const kbDocumentDB = {
       ]);
     }
   },
+
   async delete(id) {
     await pool.query("DELETE FROM kb_documents WHERE id = $1", [id]);
   },
+
   async getStats() {
     const { rows } = await pool.query(
-      "SELECT COUNT(*) as total, SUM(chunk_count) as chunks, COUNT(*) FILTER (WHERE status = 'ready') as ready FROM kb_documents",
+      "SELECT COUNT(*) as total, COALESCE(SUM(chunk_count), 0) as chunks, COUNT(*) FILTER (WHERE status = 'ready') as ready FROM kb_documents",
     );
     return rows[0];
   },
 };
 
-// ─── 安全护栏日志 ───
+// ─── 安全护栏日志 ────────────────────────────────────────────────
 export const guardrailDB = {
   async add(sessionId, inputText, blockReason) {
     await pool.query(
@@ -138,6 +149,7 @@ export const guardrailDB = {
       [sessionId, inputText, blockReason],
     );
   },
+
   async getRecent(limit = 20) {
     const { rows } = await pool.query(
       "SELECT * FROM guardrail_logs ORDER BY created_at DESC LIMIT $1",

@@ -1,12 +1,15 @@
-import { ragChain } from "../../chains/rag-chain.js";
+import { ragChainWithSourcesAndRerank } from "../../chains/rag-chain.js";
 
 export const ragNode = async (state) => {
   const { userInput } = state;
   try {
-    const result = await ragChain.invoke({ question: userInput });
-    return { ragResult: result };
+    // T20: 使用重排序 + 来源 RAG Chain
+    const { answer, sources } = await ragChainWithSourcesAndRerank.invoke({
+      question: userInput,
+    });
+    return { ragResult: answer, ragSources: sources };
   } catch (err) {
     console.error("[ragNode]", err.message);
-    return { ragResult: "查询知识库时出错" };
+    return { ragResult: "查询知识库时出错", ragSources: [] };
   }
 };

@@ -1,9 +1,3 @@
-/**
- * routes/chat.js（改造版）
- * 改造点：流式接口在发送/接收消息时写入 messages 表
- * 原有 health 和 POST / 端点保持不变
- */
-
 import express from "express";
 import {
   customerServiceChain,
@@ -11,103 +5,129 @@ import {
   formatHistory,
 } from "../chains/basic-chat.js";
 import { messageDB } from "../db/postgres.js";
-import { queryCache, writeCache } from "../cache/semantic-cache.js";
+import { queryCache, writeCache } from "../cache/semantic-cache.js"; // T14 新增
 
 const router = express.Router();
 
-/**
- * @description 健康检查
- */
-
+// ─── 健康检查 ────────────────────────────────────────────────────
 router.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    service: "chat",
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-/**
- * @description 普通对话接口
- */
+// ─── 普通对话接口 ────────────────────────────────────────────────
 router.post("/", async (req, res) => {
+  const { message, history = [] } = req.body;
+
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "message 字段不能为空" });
+  }
+
   try {
-    const { message, history = [] } = req.body;
-    if (!message) return res.status(400).json({ error: "message 不能为空" });
     const response = await customerServiceChain.invoke({
-      message,
-      history: formatHistory(history),
+      user_input: message,
+      chat_history: formatHistory(history),
+      current_time: new Date().toLocaleString("zh-CN"),
     });
-    res.json({ reply: response });
+
+    res.json({ content: response });
   } catch (error) {
     console.error("[Chat Error]", error.message);
     res.status(500).json({ error: "服务暂时不可用，请稍后重试" });
   }
 });
 
-/**
- * @description 流式对话接口（SSE）
- */
+// ─── 流式对话接口（SSE）─────────────────────────────────────────
 router.post("/stream", async (req, res) => {
   const { message, history = [], sessionId } = req.body;
-  if (!message) return res.status(400).json({ error: "message 不能为空" });
 
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "message 字段不能为空" });
+  }
+
+  // 用户消息入库（如果有 sessionId）
+  if (sessionId) {
+    try {
+      await messageDB.add(sessionId, "user", message);
+    } catch (err) {
+      console.error("[Message Persist Error]", err.message);
+      // 入库失败不阻塞对话流程
+    }
+  }
+
+  // 设置 SSE 响应头
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+  const sendData = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
 
-  // ① 缓存检查
+  // 语义缓存检查 — 命中则直接返回缓存答案（模拟流式逐字）
   const cached = await queryCache(message);
   if (cached.hit) {
-    send({ type: "cache_hit", cached: true });
-    // 逐字发送缓存答案（模拟流式）
-    const words = cached.answer.split("");
-    for (const word of words) {
-      send({ content: word });
+    // 发送缓存命中标记
+    sendData({ type: "cache_hit", cached: true });
+
+    // 逐字发送缓存答案（模拟流式效果）
+    const chars = cached.answer.split("");
+    for (const char of chars) {
+      sendData({ content: char });
       await new Promise((r) => setTimeout(r, 10)); // 10ms 间隔
     }
+
+    // AI 回复入库（用户消息已在 SSE 头之前入库）
     if (sessionId) {
-      await messageDB.add(sessionId, "user", message);
-      await messageDB.add(sessionId, "assistant", cached.answer);
+      try {
+        await messageDB.add(sessionId, "assistant", cached.answer);
+      } catch (err) {
+        console.error("[Message Persist Error]", err.message);
+      }
     }
-    send({ done: true });
+
+    sendData({ done: true });
     return res.end();
   }
 
-  // ② 未命中，正常流式生成
-  if (sessionId) {
-    await messageDB.add(sessionId, "user", message);
-  }
-
+  // 未命中缓存 — 正常流式生成
   try {
     const stream = await customerServiceStreamChain.stream({
-      message,
-      history: formatHistory(history),
+      user_input: message,
+      chat_history: formatHistory(history),
+      current_time: new Date().toLocaleString("zh-CN"),
     });
 
     let fullResponse = "";
+
+    // 逐块发送给前端
     for await (const chunk of stream) {
       if (chunk) {
         fullResponse += chunk;
-        send({ content: chunk });
+        sendData({ content: chunk });
       }
     }
 
-    // ③ 写入缓存
+    // 写入语义缓存
     if (fullResponse) {
       await writeCache(message, fullResponse);
-      if (sessionId) {
+    }
+
+    //  AI 回复入库
+    if (sessionId && fullResponse) {
+      try {
         await messageDB.add(sessionId, "assistant", fullResponse);
+      } catch (err) {
+        console.error("[Message Persist Error]", err.message);
       }
     }
 
-    send({ done: true });
+    // 发送结束标记
+    sendData({ done: true });
     res.end();
-  } catch (err) {
-    send({ error: "回复失败，请重试" });
+  } catch (error) {
+    console.error("[Stream Error]", error.message);
+    sendData({ error: "生成回复时出错，请重试" });
     res.end();
   }
 });
