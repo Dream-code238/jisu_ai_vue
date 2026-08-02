@@ -1,9 +1,16 @@
 <template>
-  <div class="meta-row">
-    <span class="role-name">小购</span>
-    <span v-if="meta?.mode" class="mode-tag">{{ meta.mode }}</span>
-    <span v-if="meta?.cached" class="cache-badge">⚡缓存命中</span>
-    <span class="time">{{ meta?.time || '' }}</span>
+  <div class="msg-meta">
+    <span>小购</span>
+    <span v-if="meta?.mode">·</span>
+    <span v-if="meta?.mode">{{ meta.mode }}</span>
+    <span v-if="meta?.cached" class="msg-cache-badge">⚡ 缓存命中</span>
+    <span
+      v-if="meta?.blocked"
+      class="msg-cache-badge"
+      style="background: var(--red-l); color: var(--red); border-color: var(--red-b)"
+      >🛡️ 安全拦截</span
+    >
+    <span v-if="meta?.time" class="meta-time">{{ meta.time }}</span>
   </div>
 </template>
 
@@ -11,36 +18,30 @@
 defineProps({ meta: { type: Object, default: () => ({}) } })
 </script>
 
-<style lang="less" scoped>
-.meta-row {
+<style scoped>
+.msg-meta {
+  font-size: 11px;
+  color: var(--slate-400);
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 8px;
   padding-left: 4px;
 }
-.role-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-}
-.mode-tag {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: #eef2ff;
-  color: #6366f1;
-}
-.cache-badge {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: #fffbeb;
-  color: #d97706;
-}
-.time {
+.msg-cache-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--amber-l);
+  color: var(--amber);
   font-size: 11px;
-  color: #94a3b8;
+  font-weight: 500;
+  border: 1px solid var(--amber-b);
+}
+.meta-time {
   margin-left: auto;
+  font-size: 11px;
+  color: var(--slate-400);
 }
 </style>

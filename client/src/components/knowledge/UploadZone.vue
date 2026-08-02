@@ -1,27 +1,27 @@
 <template>
   <div
-    class="upload-zone"
+    class="kb-upload"
     :class="{ dragging, uploading }"
     @dragover.prevent="dragging = true"
     @dragleave.prevent="dragging = false"
     @drop.prevent="handleDrop"
   >
     <template v-if="!uploading">
-      <div class="upload-icon">📄</div>
-      <p class="upload-text">
+      <div class="kb-upload-icon">📄</div>
+      <h3>
         拖拽文件到此处，或
-        <label class="upload-link"
-          >点击选择<input type="file" accept=".md,.txt,.pdf,.docx" @change="handleSelect" hidden
-        /></label>
-      </p>
-      <p class="upload-hint">支持 .md / .txt / .pdf / .docx，最大 20MB</p>
+        <label class="upload-link">
+          点击选择
+          <input type="file" accept=".md,.txt,.pdf,.docx" @change="handleSelect" hidden />
+        </label>
+      </h3>
+      <p>支持 .md / .txt / .pdf / .docx，最大 20MB</p>
     </template>
     <template v-else>
-      <div class="upload-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: progress + '%' }"></div>
-        </div>
-        <p class="progress-text">上传中... {{ progress }}%</p>
+      <div class="kb-upload-icon" style="background: var(--blue-l); color: var(--blue)">⏳</div>
+      <h3>上传处理中... {{ progress }}%</h3>
+      <div class="upload-progress-bar">
+        <div class="upload-progress-fill" :style="{ width: progress + '%' }"></div>
       </div>
     </template>
   </div>
@@ -30,74 +30,87 @@
 <script setup>
 import { ref } from 'vue'
 
-const props = defineProps({ uploading: Boolean, progress: { type: Number, default: 0 } })
+const props = defineProps({
+  uploading: { type: Boolean, default: false },
+  progress: { type: Number, default: 0 },
+})
 const emit = defineEmits(['upload'])
 
 const dragging = ref(false)
 
 const handleDrop = (e) => {
   dragging.value = false
-  const file = e.dataTransfer.files[0]
-  if (file) emit('upload', file)
+  const files = e.dataTransfer.files
+  if (files.length > 0) emit('upload', files[0])
 }
 
 const handleSelect = (e) => {
   const file = e.target.files[0]
   if (file) emit('upload', file)
+  e.target.value = ''
 }
 </script>
 
-<style lang="less" scoped>
-.upload-zone {
-  border: 2px dashed #cbd5e1;
-  border-radius: 12px;
-  padding: 40px;
-  text-align: center;
-  margin-bottom: 24px;
-  transition: all 0.2s;
+<style scoped>
+.kb-upload {
   background: #fff;
+  border: 2px dashed var(--slate-200);
+  border-radius: 14px;
+  padding: 32px;
+  text-align: center;
+  transition: all 0.15s;
+  cursor: pointer;
 }
-.upload-zone.dragging {
-  border-color: #2563eb;
-  background: #eff6ff;
+.kb-upload:hover,
+.kb-upload.dragging {
+  border-color: var(--teal-b);
+  background: var(--teal-l);
 }
-.upload-zone.uploading {
+.kb-upload.uploading {
+  cursor: default;
   border-style: solid;
-  border-color: #2563eb;
+  border-color: var(--blue-b);
 }
-.upload-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
+.kb-upload-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--teal-l);
+  color: var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin: 0 auto 12px;
 }
-.upload-text {
-  font-size: 14px;
-  color: #475569;
+.kb-upload h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--slate-700);
+  margin-bottom: 4px;
+}
+.kb-upload p {
+  font-size: 13px;
+  color: var(--slate-400);
 }
 .upload-link {
-  color: #2563eb;
+  color: var(--teal);
   cursor: pointer;
   text-decoration: underline;
 }
-.upload-hint {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 8px;
-}
-.progress-bar {
+.upload-progress-bar {
   width: 100%;
+  max-width: 300px;
   height: 8px;
-  background: #e2e8f0;
+  background: var(--slate-100);
   border-radius: 4px;
   overflow: hidden;
+  margin: 12px auto 0;
 }
-.progress-fill {
+.upload-progress-fill {
   height: 100%;
-  background: #2563eb;
-  transition: width 0.3s;
-}
-.progress-text {
-  font-size: 13px;
-  color: #2563eb;
-  margin-top: 8px;
+  background: var(--blue);
+  border-radius: 4px;
+  transition: width 0.3s ease;
 }
 </style>

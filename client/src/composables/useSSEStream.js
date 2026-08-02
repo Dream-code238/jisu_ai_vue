@@ -1,17 +1,19 @@
 /**
  * 通用 SSE 流式通信 composable
- * 封装 fetch + ReadableStream + 事件分发
+ * 封装 fetch + ReadableStream + 事件分发，统一处理 4 个后端接口的 SSE 事件
  *
- * @param {Object} callbacks - 事件回调
- * @param {Function} [callbacks.onChunk]     - 逐字输出回调 (content: string)
- * @param {Function} [callbacks.onSources]   - 来源信息回调 (sources: Array)
- * @param {Function} [callbacks.onInterrupt] - HITL中断回调 (detail: Object)
- * @param {Function} [callbacks.onTrace]     - 工作流轨迹回调 (node: Object)
- * @param {Function} [callbacks.onStep]      - Agent步骤回调 (step: Object)
- * @param {Function} [callbacks.onDone]      - 流结束回调 ()
- * @param {Function} [callbacks.onError]     - 错误回调 (error: string)
- *
- * @returns {{ streaming, streamText, error, startStream, stopStream }}
+ * 兼容的 SSE 事件格式：
+ *   { content: "chunk" }              → 流式文本片段（chat 接口）
+ *   { type: 'answer', content: "..." } → 完整答案（agent/rag/graph 接口）
+ *   { type: 'sources', sources: [] }   → RAG 来源列表
+ *   { type: 'step', tool, toolInput, observation } → Agent 工具步骤
+ *   { type: 'steps', steps: [] }       → Graph 步骤列表
+ *   { type: 'node', node, intent? }    → Graph 节点轨迹
+ *   { type: 'interrupt', ... }         → HITL 审批中断
+ *   { type: 'cache_hit' }            → 语义缓存命中（T14）
+ *   { type: 'block', reason }        → 安全护栏拦截（T16）
+ *   { done: true } / { type: 'done' }  → 流结束
+ *   { error: "..." } / { type: 'error', content: "..." } → 错误
  */
 import { ref } from 'vue'
 
@@ -58,7 +60,7 @@ export function useSSEStream(callbacks = {}) {
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
-        buffer = lines.pop() // 保留最后不完整的行
+        buffer = lines.pop() // 保留最后不完整的行，等下次拼接
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
@@ -83,45 +85,86 @@ export function useSSEStream(callbacks = {}) {
     }
   }
 
+  /**
+   * 事件分发 — 统一处理所有后端的 SSE 事件格式
+   */
   const dispatchEvent = (data, onScroll) => {
+    // 错误处理（兼容两种格式）
     if (data.error) {
       error.value = data.error
       callbacks.onError?.(data.error)
       return
     }
-    if (data.done) {
+    if (data.type === 'error') {
+      error.value = data.content || '未知错误'
+      callbacks.onError?.(error.value)
+      return
+    }
+
+    // 结束标记（兼容两种格式）
+    if (data.done === true || data.type === 'done') {
       callbacks.onDone?.()
       return
     }
 
+    // 按类型分发
     switch (data.type) {
-      case 'chunk':
       case 'answer':
-        streamText.value += data.content
+        // Agent/RAG/Graph 的完整答案 → 设置 streamText
+        streamText.value = data.content || ''
         onScroll?.()
         break
+
       case 'sources':
-        callbacks.onSources?.(data.sources)
+        callbacks.onSources?.(data.sources || [])
         break
+
+      case 'step':
+        callbacks.onStep?.({
+          tool: data.tool,
+          toolInput: data.toolInput,
+          observation: data.observation,
+        })
+        onScroll?.()
+        break
+
+      case 'steps':
+        callbacks.onStep?.(data.steps || data)
+        onScroll?.()
+        break
+
+      case 'node':
+      case 'trace':
+        callbacks.onTrace?.(data)
+        onScroll?.()
+        break
+
       case 'interrupt':
         callbacks.onInterrupt?.(data)
         break
-      case 'trace':
-      case 'node':
-        callbacks.onTrace?.(data)
-        break
-      case 'step':
-      case 'steps':
-        callbacks.onStep?.(data.steps || data)
-        break
+
       case 'cache_hit':
         callbacks.onCacheHit?.(data)
         break
+
+      case 'block':
+        callbacks.onBlock?.(data)
+        break
+
       case 'handoff':
         callbacks.onHandoff?.(data)
         break
+
       case 'agent_switch':
         callbacks.onAgentSwitch?.(data)
+        break
+
+      default:
+        // 无 type 字段 → chat 接口的流式 chunk
+        if (data.content) {
+          streamText.value += data.content
+          onScroll?.()
+        }
         break
     }
   }

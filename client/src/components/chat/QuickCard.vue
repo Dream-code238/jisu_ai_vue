@@ -1,46 +1,55 @@
 <template>
   <div class="quick-card" @click="$emit('click')">
-    <span class="card-icon">{{ icon }}</span>
-    <div>
-      <div class="card-title">{{ title }}</div>
-      <div class="card-desc">{{ desc }}</div>
-    </div>
+    <div class="quick-card-icon" :style="{ background: iconBg, color: iconColor }">{{ icon }}</div>
+    <div class="quick-card-title">{{ title }}</div>
+    <div class="quick-card-desc">{{ desc }}</div>
   </div>
 </template>
 
 <script setup>
-defineProps({ icon: String, title: String, desc: String })
+defineProps({
+  icon: { type: String, default: '📄' },
+  iconBg: { type: String, default: 'var(--slate-100)' },
+  iconColor: { type: String, default: 'var(--slate-600)' },
+  title: { type: String, required: true },
+  desc: { type: String, default: '' },
+})
 defineEmits(['click'])
 </script>
 
 <style scoped>
 .quick-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  padding: 14px;
   border-radius: 12px;
+  border: 1px solid var(--slate-200);
+  background: #fff;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .quick-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
-  border-color: #bfdbfe;
+  border-color: var(--blue-b);
+  background: var(--blue-l);
+  box-shadow: var(--shadow-sm);
 }
-.card-icon {
-  font-size: 20px;
+.quick-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  margin-bottom: 10px;
 }
-.card-title {
-  font-size: 14px;
+.quick-card-title {
+  font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--slate-700);
+  margin-bottom: 2px;
 }
-.card-desc {
+.quick-card-desc {
   font-size: 12px;
-  color: #64748b;
-  margin-top: 2px;
+  color: var(--slate-400);
 }
 </style>

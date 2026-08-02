@@ -2,7 +2,7 @@
   <span class="cursor"></span>
 </template>
 
-<style lang="less" scoped>
+<style scoped>
 .cursor {
   display: inline-block;
   width: 8px;

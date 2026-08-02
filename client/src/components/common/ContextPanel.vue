@@ -1,71 +1,138 @@
 <template>
   <div class="context-panel">
-    <div class="panel-section">
-      <div class="section-title">会话信息</div>
-      <div class="info-row">
-        <span>模型</span><strong>{{ sessionInfo.model || 'deepseek-chat' }}</strong>
-      </div>
-      <div class="info-row">
-        <span>模式</span><strong>{{ sessionInfo.mode || '基础对话' }} </strong>
-      </div>
-      <div class="info-row">
-        <span>消息数</span><strong>{{ sessionInfo.msgCount || 0 }} </strong>
+    <div class="ctx-section">
+      <div class="ctx-head">当前会话</div>
+      <div class="ctx-body">
+        <div class="ctx-card">
+          <div class="ctx-card-label">对话模式</div>
+          <div class="ctx-card-value" style="color: var(--blue)">
+            {{ sessionInfo.mode || '基础对话 (LCEL)' }}
+          </div>
+        </div>
+        <div class="ctx-stat-row">
+          <span class="ctx-stat-label">消息数</span>
+          <span class="ctx-stat-value">{{ sessionInfo.msgCount || 0 }}</span>
+        </div>
+        <div class="ctx-stat-row">
+          <span class="ctx-stat-label">Token 消耗</span>
+          <span class="ctx-stat-value">{{ sessionInfo.tokenCount || 0 }}</span>
+        </div>
+        <div class="ctx-stat-row">
+          <span class="ctx-stat-label">响应耗时</span>
+          <span class="ctx-stat-value">{{ sessionInfo.responseTime || '—' }}</span>
+        </div>
       </div>
     </div>
-    <div class="panel-section">
-      <div class="section-title">快捷操作</div>
-      <button class="action-btn">导出对话</button>
-      <button class="action-btn">清空上下文</button>
+    <div class="ctx-section">
+      <div class="ctx-head">模型配置</div>
+      <div class="ctx-body">
+        <div class="ctx-stat-row">
+          <span class="ctx-stat-label">模型</span>
+          <span class="ctx-stat-value">{{ sessionInfo.model || 'DeepSeek-V4' }}</span>
+        </div>
+        <div class="ctx-stat-row">
+          <span class="ctx-stat-label">Temperature</span>
+          <span class="ctx-stat-value">{{ sessionInfo.temperature || '0.7' }}</span>
+        </div>
+        <div class="ctx-stat-row">
+          <span class="ctx-stat-label">上下文窗口</span>
+          <span class="ctx-stat-value">{{ sessionInfo.contextWindow || '4096' }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="ctx-section">
+      <div class="ctx-head">快捷操作</div>
+      <div class="ctx-body">
+        <button class="btn btn-ghost btn-sm ctx-action-btn" @click="$emit('export')">
+          📋 复制对话记录
+        </button>
+        <button class="btn btn-ghost btn-sm ctx-action-btn danger" @click="$emit('clear')">
+          🗑️ 清空对话
+        </button>
+        <button class="btn btn-ghost btn-sm ctx-action-btn" @click="$emit('export')">
+          📥 导出为文件
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({ sessionInfo: { type: Object, default: () => ({}) } })
+defineProps({
+  sessionInfo: { type: Object, default: () => ({}) },
+})
+defineEmits(['export', 'clear'])
 </script>
 
 <style scoped>
 .context-panel {
   width: 280px;
-  background: #f8fafc;
-  border-left: 1px solid #e2e8f0;
-  padding: 16px;
+  background: #fff;
+  border-left: 1px solid var(--slate-200);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
   overflow-y: auto;
 }
-.panel-section {
-  margin-bottom: 20px;
+.ctx-section {
+  border-bottom: 1px solid var(--slate-100);
 }
-.section-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
+.ctx-head {
+  padding: 12px 16px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate-500);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ctx-body {
+  padding: 0 16px 14px;
+}
+.ctx-card {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
   margin-bottom: 8px;
 }
-.info-row {
+.ctx-card-label {
+  font-size: 11px;
+  color: var(--slate-400);
+  margin-bottom: 4px;
+}
+.ctx-card-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--slate-700);
+}
+.ctx-stat-row {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
-  font-size: 13px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12px;
 }
-.info-row span {
-  color: #64748b;
+.ctx-stat-label {
+  color: var(--slate-500);
 }
-.info-row strong {
-  color: #1e293b;
+.ctx-stat-value {
+  font-weight: 600;
+  color: var(--slate-700);
 }
-.action-btn {
-  display: block;
+.ctx-action-btn {
   width: 100%;
-  padding: 8px;
   margin-bottom: 6px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
+  justify-content: center;
 }
-.action-btn:hover {
-  background: #f1f5f9;
+.ctx-action-btn:last-child {
+  margin-bottom: 0;
+}
+.ctx-action-btn.danger {
+  color: var(--red);
+}
+.ctx-action-btn.danger:hover {
+  background: var(--red-l);
+  border-color: var(--red-b);
 }
 </style>

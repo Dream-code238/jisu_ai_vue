@@ -1,55 +1,60 @@
 <template>
-  <div class="stat-card" :class="color">
-    <div class="stat-icon">{{ icon }}</div>
-    <div class="stat-body">
-      <div class="stat-value">{{ value }}</div>
-      <div class="stat-label">{{ label }}</div>
-    </div>
+  <div class="stat-card">
+    <div class="stat-card-icon" :style="{ background: iconBg, color: iconColor }">{{ icon }}</div>
+    <div class="stat-card-label">{{ label }}</div>
+    <div class="stat-card-value">{{ value }}</div>
   </div>
 </template>
 
 <script setup>
-defineProps({ label: String, value: [Number, String], icon: String, color: String })
+import { computed } from 'vue'
+
+const props = defineProps({
+  label: { type: String, required: true },
+  value: { type: [Number, String], default: 0 },
+  icon: { type: String, default: '📊' },
+  color: { type: String, default: 'blue' },
+})
+
+const colorMap = {
+  blue: { bg: 'var(--blue-l)', color: 'var(--blue)' },
+  teal: { bg: 'var(--teal-l)', color: 'var(--teal)' },
+  purple: { bg: 'var(--purple-l)', color: 'var(--purple)' },
+  amber: { bg: 'var(--amber-l)', color: 'var(--amber)' },
+  indigo: { bg: 'var(--indigo-l)', color: 'var(--indigo)' },
+}
+
+const iconBg = computed(() => (colorMap[props.color] || colorMap.blue).bg)
+const iconColor = computed(() => (colorMap[props.color] || colorMap.blue).color)
 </script>
 
-<style lang="less" scoped>
+<style scoped>
 .stat-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--slate-200);
   border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
 }
-.stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+.stat-card-label {
+  font-size: 12px;
+  color: var(--slate-400);
+  margin-bottom: 6px;
+}
+.stat-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--slate-800);
+}
+.stat-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-}
-.stat-card.blue .stat-icon {
-  background: #eff6ff;
-}
-.stat-card.teal .stat-icon {
-  background: #f0fdfa;
-}
-.stat-card.purple .stat-icon {
-  background: #f5f3ff;
-}
-.stat-card.amber .stat-icon {
-  background: #fffbeb;
-}
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1e293b;
-}
-.stat-label {
-  font-size: 12px;
-  color: #64748b;
+  font-size: 16px;
+  float: right;
+  margin-top: -6px;
 }
 </style>

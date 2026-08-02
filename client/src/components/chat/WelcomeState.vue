@@ -1,9 +1,9 @@
 <template>
-  <div class="welcome">
-    <div class="logo">购</div>
-    <h2>极速购 AI 客服</h2>
-    <p>我是小购，有什么可以帮您的？</p>
-    <div class="card-grid">
+  <div class="welcome-state">
+    <div class="welcome-icon">👋</div>
+    <h2>您好，我是极速购智能客服小购</h2>
+    <p class="welcome-sub">有任何购物、订单、物流、售后问题都可以问我</p>
+    <div class="quick-grid">
       <QuickCard
         v-for="c in cards"
         :key="c.route"
@@ -17,51 +17,77 @@
 <script setup>
 import QuickCard from './QuickCard.vue'
 
-const cards = [
-  { icon: '🔧', title: '查询订单', desc: '输入订单号查看物流状态', route: '/agent' },
-  { icon: '📚', title: '知识库问答', desc: '退换货政策、售后指南', route: '/rag' },
-  { icon: '⚡', title: '智能中枢', desc: '查看工作流执行轨迹', route: '/graph' },
-  { icon: '📁', title: '知识库管理', desc: '上传文档管理知识库', route: '/knowledge' },
-]
-
 defineEmits(['card-click'])
+
+const cards = [
+  {
+    icon: '📦',
+    iconBg: 'var(--blue-l)',
+    iconColor: 'var(--blue)',
+    title: '订单查询',
+    desc: '查物流、查状态、查详情',
+    route: '/agent',
+  },
+  {
+    icon: '📖',
+    iconBg: 'var(--teal-l)',
+    iconColor: 'var(--teal)',
+    title: '商品咨询',
+    desc: '规格、参数、使用方法',
+    route: '/rag',
+  },
+  {
+    icon: '🔄',
+    iconBg: 'var(--teal-l)',
+    iconColor: 'var(--teal)',
+    title: '售后政策',
+    desc: '退换货、保修、退款',
+    route: '/rag',
+  },
+  {
+    icon: '⚡',
+    iconBg: 'var(--purple-l)',
+    iconColor: 'var(--purple)',
+    title: '智能中枢',
+    desc: '自动路由最优回答',
+    route: '/graph',
+  },
+]
 </script>
 
 <style scoped>
-.welcome {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.welcome-state {
+  text-align: center;
+  padding: 48px 20px;
+  max-width: 520px;
+  margin: 0 auto;
 }
-.logo {
+.welcome-icon {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #2563eb, #6366f1);
+  background: linear-gradient(135deg, var(--blue), var(--indigo));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 16px;
+  margin: 0 auto 16px;
+  box-shadow: var(--shadow-md);
 }
-h2 {
+.welcome-state h2 {
   font-size: 20px;
-  color: #1e293b;
-  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--slate-800);
+  margin-bottom: 6px;
 }
-p {
+.welcome-sub {
   font-size: 14px;
-  color: #64748b;
+  color: var(--slate-500);
   margin-bottom: 24px;
 }
-.card-grid {
+.quick-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  max-width: 480px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 </style>

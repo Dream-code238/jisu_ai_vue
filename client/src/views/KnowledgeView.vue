@@ -1,23 +1,29 @@
+<!--知识库管理页-->
 <template>
-  <div class="knowledge-page">
-    <!-- KPI 卡片 -->
-    <div class="kpi-grid">
+  <div class="kb-page">
+    <div class="kb-header">
+      <h2>知识库管理</h2>
+      <button class="btn btn-ghost btn-sm" @click="refresh" :disabled="uploading">🔄 刷新</button>
+    </div>
+
+    <div class="kb-stats">
       <StatCard label="文档总数" :value="stats.total" icon="📁" color="blue" />
       <StatCard label="已就绪" :value="stats.ready" icon="✅" color="teal" />
       <StatCard label="分块数" :value="stats.chunks" icon="🧩" color="purple" />
-      <StatCard label="处理中" :value="stats.total - stats.ready" icon="⏳" color="amber" />
+      <StatCard label="处理中" :value="processingCount" icon="⏳" color="amber" />
     </div>
 
-    <!-- 上传区 -->
     <UploadZone :uploading="uploading" :progress="uploadProgress" @upload="handleUpload" />
+    <div v-if="error" class="error-tip">⚠️ {{ error }}</div>
 
-    <!-- 文档列表 -->
-    <DocumentTable :documents="documents" @delete="handleDelete" />
+    <div style="margin-top: 20px">
+      <DocumentTable :documents="documents" @delete="handleDelete" />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useKnowledge } from '../composables/useKnowledge.js'
 import StatCard from '../components/knowledge/StatCard.vue'
 import UploadZone from '../components/knowledge/UploadZone.vue'
@@ -28,11 +34,15 @@ const {
   stats,
   uploading,
   uploadProgress,
+  error,
   loadDocuments,
   loadStats,
   uploadDocument,
   deleteDocument,
+  refresh,
 } = useKnowledge()
+
+const processingCount = computed(() => Math.max(0, stats.value.total - stats.value.ready))
 
 onMounted(() => {
   loadDocuments()
@@ -44,20 +54,46 @@ const handleUpload = async (file) => {
 }
 
 const handleDelete = async (id) => {
-  await deleteDocument(id)
+  if (confirm('确定删除该文档吗？关联的向量数据也会被清除。')) {
+    await deleteDocument(id)
+  }
 }
 </script>
 
 <style scoped>
-.knowledge-page {
+.kb-page {
+  flex: 1;
+  overflow-y: auto;
   padding: 24px 32px;
-  max-width: 1100px;
-  margin: 0 auto;
 }
-.kpi-grid {
+.kb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.kb-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--slate-800);
+}
+.kb-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.error-tip {
+  margin-top: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--red-l);
+  color: var(--red);
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .kb-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

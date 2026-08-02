@@ -1,37 +1,37 @@
 <template>
-  <div id="app_root_container">
+  <div class="app">
     <TheSidebar />
     <div class="main">
       <TheHeader />
-      <main class="content-area">
+      <div class="main-body">
         <router-view />
-      </main>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
 import TheSidebar from './components/layout/TheSidebar.vue'
 import TheHeader from './components/layout/TheHeader.vue'
 </script>
 
-<style lang="less" scoped>
-#app_root_container {
+<style>
+.app {
   display: flex;
-  width: 100%;
-  height: 100%;
-  max-width: 100vw;
-  max-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--slate-50);
 }
-.content-area {
+.main-body {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  position: relative;
 }
 </style>

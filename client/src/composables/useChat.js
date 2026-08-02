@@ -1,11 +1,3 @@
-/**
- * useChat — 基础对话（T07 版本）
- * 基于 T04 改造版，增量添加：
- * 1. sessionIdRef 参数 — 关联当前会话
- * 2. loadHistory() — 加载历史消息
- * 3. sendMessage 传 sessionId 给后端
- * 4. onDone 时更新会话标题
- */
 import { ref } from 'vue'
 import { useSSEStream } from './useSSEStream.js'
 
@@ -13,13 +5,17 @@ const API_BASE = 'http://localhost:3000/api'
 
 export function useChat(sessionIdRef) {
   const messages = ref([])
-  const historyLoaded = ref(false)
-  const cacheHit = ref(false)
+  const cacheHit = ref(false) // 缓存命中标记
+  const blocked = ref(false) // 安全拦截标记
 
   const { streaming, streamText, error, startStream, stopStream } = useSSEStream({
-    onCacheHit: (data) => {
-      // 可在此设置 meta.cached = true
+    // 语义缓存命中回调
+    onCacheHit: () => {
       cacheHit.value = true
+    },
+    // 安全护栏拦截回调
+    onBlock: () => {
+      blocked.value = true
     },
     onDone: () => {
       if (streamText.value) {
@@ -27,14 +23,19 @@ export function useChat(sessionIdRef) {
           role: 'assistant',
           content: streamText.value,
           meta: {
-            mode: 'chat',
-            cached: cacheHit.value,
+            cached: cacheHit.value, // 缓存命中标记（前端显示⚡徽章）
+            blocked: blocked.value, // 安全拦截标记（前端显示🛡️徽章）
             time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
           },
         })
+        // 首条消息后更新会话标题
+        if (sessionIdRef?.value && messages.value.length === 1) {
+          updateSessionTitle(sessionIdRef.value, messages.value[0].content.slice(0, 30))
+        }
       }
       streamText.value = ''
-      cacheHit.value = false
+      cacheHit.value = false // 重置缓存标记
+      blocked.value = false // 重置拦截标记
     },
   })
 
@@ -43,13 +44,17 @@ export function useChat(sessionIdRef) {
    * @param {string} sessionId
    */
   const loadHistory = async (sessionId) => {
+    if (!sessionId) return
     try {
       const res = await fetch(`${API_BASE}/chat/history/${sessionId}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      messages.value = data.map((m) => ({ role: m.role, content: m.content }))
-      historyLoaded.value = true
+      messages.value = data.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
     } catch (err) {
-      console.error('加载历史失败:', err)
+      console.error('加载历史失败:', err.message)
     }
   }
 
@@ -57,7 +62,11 @@ export function useChat(sessionIdRef) {
     if (!userInput.trim() || streaming.value) return
 
     messages.value.push({ role: 'user', content: userInput })
-    const history = messages.value.slice(-10).map(({ role, content }) => ({ role, content }))
+
+    const history = messages.value
+      .filter((m) => m.content)
+      .slice(-10)
+      .map(({ role, content }) => ({ role, content }))
 
     await startStream(
       '/chat/stream',
@@ -74,6 +83,8 @@ export function useChat(sessionIdRef) {
 
   const clearMessages = () => {
     messages.value = []
+    cacheHit.value = false
+    blocked.value = false
     error.value = ''
   }
 
@@ -81,6 +92,8 @@ export function useChat(sessionIdRef) {
     messages,
     streaming,
     streamText,
+    cacheHit,
+    blocked,
     error,
     sendMessage,
     clearMessages,
@@ -89,8 +102,10 @@ export function useChat(sessionIdRef) {
   }
 }
 
+/**
+ * 更新会话标题（静默调用，失败不影响对话）
+ */
 async function updateSessionTitle(sessionId, title) {
-  // 可选：调用 API 更新会话标题
   try {
     await fetch(`${API_BASE}/chat/session/${sessionId}`, {
       method: 'PATCH',

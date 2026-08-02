@@ -1,115 +1,153 @@
 <template>
-  <div class="doc-table-wrapper">
-    <table class="doc-table">
-      <thead>
-        <tr>
-          <th>文件名</th>
-          <th>类型</th>
-          <th>分块数</th>
-          <th>状态</th>
-          <th>上传时间</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="doc in documents" :key="doc.id">
-          <td>{{ doc.filename }}</td>
-          <td>
-            <span class="file-type">{{ doc.file_type }}</span>
-          </td>
-          <td>{{ doc.chunk_count }}</td>
-          <td>
-            <span class="status-badge" :class="doc.status">{{
-              statusMap[doc.status] || doc.status
-            }}</span>
-          </td>
-          <td>{{ formatTime(doc.uploaded_at) }}</td>
-          <td><button class="delete-btn" @click="$emit('delete', doc.id)">删除</button></td>
-        </tr>
-        <tr v-if="documents.length === 0">
-          <td colspan="6" class="empty">暂无文档，请上传</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="kb-table">
+    <div class="kb-table-head">
+      <div>文件名</div>
+      <div>类型</div>
+      <div>分块数</div>
+      <div>状态</div>
+      <div>操作</div>
+    </div>
+    <div v-if="documents.length === 0" class="kb-table-empty">📁 暂无文档，请上传知识库文件</div>
+    <div v-for="doc in documents" :key="doc.id" class="kb-table-row">
+      <div class="kb-doc-icon">
+        <span class="kb-doc-type" :style="getTypeStyle(doc.file_type)">{{ doc.file_type }}</span>
+        <span>{{ doc.filename }}</span>
+      </div>
+      <div>{{ doc.file_type }}</div>
+      <div>{{ doc.chunk_count || 0 }}</div>
+      <div>
+        <span class="kb-status-tag" :class="doc.status">
+          {{ statusMap[doc.status] || doc.status }}
+        </span>
+      </div>
+      <div>
+        <button
+          class="delete-btn"
+          @click="$emit('delete', doc.id)"
+          :disabled="doc.status === 'processing'"
+        >
+          删除
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-defineProps({ documents: { type: Array, default: () => [] } })
+defineProps({
+  documents: { type: Array, default: () => [] },
+})
 defineEmits(['delete'])
 
-const statusMap = { processing: '处理中', ready: '已就绪', failed: '失败' }
+const statusMap = {
+  processing: '处理中',
+  ready: '已就绪',
+  failed: '失败',
+}
 
-const formatTime = (iso) => {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+const getTypeStyle = (ext) => {
+  const map = {
+    md: { bg: 'var(--blue-l)', color: 'var(--blue)' },
+    txt: { bg: 'var(--slate-100)', color: 'var(--slate-600)' },
+    pdf: { bg: 'var(--red-l)', color: 'var(--red)' },
+    docx: { bg: 'var(--indigo-l)', color: 'var(--indigo)' },
+  }
+  return map[ext] || map.txt
 }
 </script>
 
-<style lang="less" scoped>
-.doc-table-wrapper {
+<style scoped>
+.kb-table {
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--slate-200);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
-.doc-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.doc-table th {
-  padding: 12px 16px;
-  text-align: left;
+.kb-table-head {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 0.8fr;
+  padding: 10px 16px;
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--slate-200);
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  color: var(--slate-500);
 }
-.doc-table td {
+.kb-table-empty {
+  padding: 48px 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--slate-400);
+}
+.kb-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 0.8fr;
   padding: 12px 16px;
+  border-bottom: 1px solid var(--slate-100);
+  align-items: center;
   font-size: 13px;
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
+  color: var(--slate-700);
 }
-.file-type {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #f1f5f9;
-  color: #475569;
+.kb-table-row:last-child {
+  border-bottom: none;
 }
-.status-badge {
-  font-size: 11px;
+.kb-table-row:hover {
+  background: var(--slate-50);
+}
+.kb-doc-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.kb-doc-type {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.kb-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
 }
-.status-badge.ready {
-  background: #f0fdfa;
-  color: #0f766e;
+.kb-status-tag.ready {
+  background: var(--green-l);
+  color: var(--green);
 }
-.status-badge.processing {
-  background: #fffbeb;
-  color: #d97706;
+.kb-status-tag.processing {
+  background: var(--amber-l);
+  color: var(--amber);
 }
-.status-badge.failed {
-  background: #fef2f2;
-  color: #ef4444;
+.kb-status-tag.failed {
+  background: var(--red-l);
+  color: var(--red);
 }
 .delete-btn {
-  background: none;
-  border: none;
-  color: #ef4444;
+  padding: 4px 12px;
+  border: 1px solid var(--slate-200);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--red);
+  font-size: 12px;
   cursor: pointer;
-  font-size: 13px;
+  transition: all 0.15s;
 }
 .delete-btn:hover {
-  text-decoration: underline;
+  background: var(--red-l);
+  border-color: var(--red-b);
 }
-.empty {
-  text-align: center;
-  color: #94a3b8;
-  padding: 32px;
+.delete-btn:disabled {
+  color: var(--slate-300);
+  cursor: not-allowed;
 }
 </style>
