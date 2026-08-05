@@ -3,8 +3,8 @@
  * 运行：node src/scripts/ingest.js
  */
 
-import { readFileSync } from "fs";
-import { join, dirname } from "path";
+import fs, { readFileSync } from "fs";
+import path, { join, dirname } from "path";
 import { fileURLToPath } from "url";
 // import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -26,9 +26,23 @@ const PG_CONFIG = {
   },
 };
 
+const readDirOut = (dirPath) => {
+  return new Promise((resolve, reject) => {
+    fs.readdir(dirPath, (err, files) => {
+      if (err) reject(err);
+      else resolve(files);
+    });
+  });
+};
+
 // 1. 加载文档
-const loadDocs = () => {
-  const files = ["products.md", "policies.md"];
+const loadDocs = async () => {
+  // 读取指定目录下的文档文件
+  // const files = ["products.md", "policies.md"];
+  // 动态解析目录下文档
+  const dirPath = path.resolve(__dirname, "../data/knowledge");
+  const files = await readDirOut(dirPath);
+
   return files.map((file) => {
     const content = readFileSync(
       join(__dirname, "../data/knowledge", file),
@@ -53,7 +67,7 @@ const splitter = new RecursiveCharacterTextSplitter({
 const ingest = async () => {
   console.log("开始处理文档...");
 
-  const docs = loadDocs();
+  const docs = await loadDocs();
   const chunks = await splitter.splitDocuments(docs);
   console.log(`文档切分完成，共 ${chunks.length} 个片段`);
 
