@@ -12,6 +12,10 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
  * - placeholder: 插入对话历史（实现记忆的关键）
  * - human: 当前用户输入
  */
+
+// ● system 消息定义角色和规则，是控制 LLM 行为最重要的地方
+// ● {变量名} 占位符在 invoke() 时动态填充，避免字符串拼接
+// ● placeholder 用于插入对话历史数组，是实现多轮对话的关键
 export const customerServicePrompt = ChatPromptTemplate.fromMessages([
   [
     "system",

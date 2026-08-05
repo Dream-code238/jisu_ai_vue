@@ -39,4 +39,8 @@ __screenshots__/
 *.timestamp-*-*.mjs
 
 .env
+
 .workbuddy
+
+**/__pycache__
+*/**/__pycache__

@@ -1,7 +1,6 @@
 /**
- * 第一章：模型封装
- * 将 DeepSeek 封装为 LangChain ChatModel
- * DeepSeek 兼容 OpenAI 协议，使用 ChatOpenAI 并替换 baseURL 即可
+ * 模型封装
+ * @description 将 DeepSeek 封装为 LangChain ChatModel
  */
 
 import { ChatOpenAI } from "@langchain/openai";
@@ -9,6 +8,7 @@ import "dotenv/config";
 
 /**
  * 创建 DeepSeek 模型实例
+ * @description DeepSeek 兼容 OpenAI 协议，使用 ChatOpenAI 并替换 baseURL 即可
  * @param {object} options - 可覆盖默认参数，如 { temperature: 0, streaming: true }
  */
 export const createModel = (options = {}) => {

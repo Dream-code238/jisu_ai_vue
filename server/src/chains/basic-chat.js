@@ -1,10 +1,14 @@
 /**
- * 第一章：Chain 链式调用
+ * Chain 链式调用
  * 使用 LCEL（LangChain Expression Language）管道语法
  * 将 Prompt → Model → OutputParser 串联
+ * LCEL 数据流：输入对象 → Prompt 格式化 → messages 数组 → Model 调用 → AIMessage → Parser 提取 → 字符串
  *
- * LCEL 数据流：
- *   输入对象 → Prompt 格式化 → messages 数组 → Model 调用 → AIMessage → Parser 提取 → 字符串
+ * 数据流说明：
+ * 1. invoke({ chat_history, user_input, current_time }) 传入 Prompt 模板
+ * 2. Prompt 模板格式化为 messages 数组，传入 Model
+ * 3. Model 调用 DeepSeek API，返回 AIMessage 对象
+ * 4. StringOutputParser 从 AIMessage 中提取纯文本字符串
  */
 
 import { StringOutputParser } from "@langchain/core/output_parsers";
