@@ -61,3 +61,55 @@
 ## 当前说明
 
 - 以 Demo 为主，订单与物流数据使用 Mock 数据，不直接接入真实 ERP / 订单系统
+
+## 项目运行
+
+### 前后端依赖
+
+```bash
+cd client
+cd server
+
+pnpm install
+```
+
+### 前后端运行
+
+```bash
+pnpm dev
+```
+
+### 启动 PostgreSQL + pgvector
+
+#### 1. 创建并启动容器
+
+```bash
+docker run -d --name pgvector-jisu -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres123 -e POSTGRES_DB=jisu_ai -p 5432:5432 -v pgvector-jisu-data:/var/lib/postgresql/data pgvector/pgvector:pg16
+```
+
+#### 2. 验证容器运行
+
+```bash
+docker ps
+```
+
+#### 3. 开启 vector 扩展
+
+```bash
+docker exec -it pgvector-jisu psql -U postgres -d jisu_ai -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+#### 4. 日常启停
+
+```bash
+docker start pgvector-jisu
+docker stop pgvector-jisu
+```
+
+### 知识库入库
+
+> RAG 功能需要先把知识库文档向量化存入数据库，只需执行一次。
+
+```bash
+pnpm ingest
+```
