@@ -113,3 +113,15 @@ docker stop pgvector-jisu
 ```bash
 pnpm ingest
 ```
+
+## 项目目录
+
+### 前端方向
+
+- client 前端 Vue3
+- server 后端 Node/Express
+
+### 后端 Python 方向
+
+- frontend_react 前端 React
+- backend_py 后端 Python
